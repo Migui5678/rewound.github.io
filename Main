@@ -1,0 +1,1018 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Failure - Archivo de Serie</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --bg-card: #1a1a1a;
+            --accent-primary: #00ff88;
+            --accent-secondary: #ff0055;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --border-color: #333333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        /* Página de inicio */
+        #home-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        #home-screen.hidden {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        .title-main {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: clamp(4rem, 15vw, 12rem);
+            color: var(--text-primary);
+            letter-spacing: 0.1em;
+            text-align: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+
+        .title-main:hover {
+            color: var(--accent-primary);
+            text-shadow: 0 0 50px rgba(0, 255, 136, 0.6);
+            transform: scale(1.05);
+        }
+
+        .subtitle {
+            position: absolute;
+            bottom: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.3em;
+            opacity: 0.7;
+        }
+
+        /* Aplicación principal */
+        #app {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+
+        #app.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            height: 100vh;
+            background: var(--bg-card);
+            border-right: 2px solid var(--border-color);
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 2rem 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-card) 100%);
+        }
+
+        .sidebar-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            color: var(--accent-primary);
+            letter-spacing: 0.15em;
+            margin-bottom: 0.5rem;
+        }
+
+        .add-episode-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: transparent;
+            border: 2px solid var(--accent-primary);
+            color: var(--accent-primary);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.1em;
+            margin-top: 1rem;
+        }
+
+        .add-episode-btn:hover {
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .episodes-list {
+            padding: 1rem 0;
+        }
+
+        .episode-item {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .episode-item:hover {
+            background: rgba(0, 255, 136, 0.05);
+            border-left-color: var(--accent-primary);
+        }
+
+        .episode-item.active {
+            background: rgba(0, 255, 136, 0.1);
+            border-left-color: var(--accent-primary);
+        }
+
+        .episode-number {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.1em;
+            margin-bottom: 0.25rem;
+        }
+
+        .episode-title {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .edit-episode-btn {
+            position: absolute;
+            right: 3rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--accent-primary);
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .episode-item:hover .edit-episode-btn {
+            opacity: 1;
+        }
+
+        .delete-episode-btn {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--accent-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .episode-item:hover .delete-episode-btn {
+            opacity: 1;
+        }
+
+        /* Botones para agregar secciones */
+        .add-section-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .add-section-btn {
+            flex: 1;
+            min-width: 150px;
+            padding: 0.75rem 1rem;
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.05em;
+        }
+
+        .add-section-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            transform: translateY(-2px);
+        }
+
+        /* Contenido principal */
+        .main-content {
+            margin-left: 280px;
+            min-height: 100vh;
+            padding: 3rem;
+        }
+
+        .episode-header {
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .episode-header h1 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3rem;
+            color: var(--accent-primary);
+            letter-spacing: 0.1em;
+            margin-bottom: 0.5rem;
+        }
+
+        .episode-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        /* Editor de contenido */
+        .content-section {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 4px;
+            cursor: move;
+            transition: all 0.3s ease;
+        }
+
+        .content-section.dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+        }
+
+        .content-section.drag-over {
+            border-color: var(--accent-primary);
+            transform: translateY(-5px);
+        }
+
+        .section-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            color: var(--accent-primary);
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 1.5rem;
+            background: var(--accent-primary);
+        }
+
+        .drag-handle {
+            margin-left: auto;
+            color: var(--text-secondary);
+            cursor: grab;
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            transition: color 0.3s ease;
+        }
+
+        .drag-handle:hover {
+            color: var(--accent-primary);
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .delete-section-btn {
+            margin-left: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--accent-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 0.5rem;
+        }
+
+        .delete-section-btn:hover {
+            color: #ff3366;
+            transform: scale(1.2);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            background: var(--bg-dark);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            padding: 1rem;
+            resize: vertical;
+            border-radius: 4px;
+            transition: border-color 0.3s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .file-input-container {
+            margin-bottom: 1.5rem;
+        }
+
+        .file-input-label {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background: transparent;
+            border: 2px solid var(--accent-secondary);
+            color: var(--accent-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+        }
+
+        .file-input-label:hover {
+            background: var(--accent-secondary);
+            color: var(--bg-dark);
+            transform: translateY(-2px);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Galería de imágenes */
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .image-item {
+            position: relative;
+            aspect-ratio: 1;
+            background: var(--bg-dark);
+            border: 2px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .image-item:hover {
+            border-color: var(--accent-primary);
+            transform: scale(1.05);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .delete-image-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: var(--accent-secondary);
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .image-item:hover .delete-image-btn {
+            opacity: 1;
+        }
+
+        /* Audio player */
+        .audio-list {
+            margin-top: 1rem;
+        }
+
+        .audio-item {
+            background: var(--bg-dark);
+            border: 2px solid var(--border-color);
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .audio-item audio {
+            flex: 1;
+            height: 40px;
+        }
+
+        .delete-audio-btn {
+            background: var(--accent-secondary);
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        /* Modal para vista de imagen */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal img {
+            max-width: 90%;
+            max-height: 90%;
+            border: 3px solid var(--accent-primary);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: var(--accent-primary);
+            color: var(--bg-dark);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 2rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Estado vacío */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state h2 {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        /* Scrollbar personalizado */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-primary);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                border-bottom: 2px solid var(--border-color);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 2rem 1rem;
+            }
+
+            .title-main {
+                font-size: 4rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Pantalla de inicio -->
+    <div id="home-screen">
+        <div>
+            <h1 class="title-main" onclick="enterApp()">FAILURE</h1>
+            <p class="subtitle">CLICK TO ENTER</p>
+        </div>
+    </div>
+
+    <!-- Aplicación principal -->
+    <div id="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">FAILURE</div>
+                <button class="add-episode-btn" onclick="addEpisode()">+ AÑADIR EPISODIO</button>
+            </div>
+            <div class="episodes-list" id="episodesList"></div>
+        </aside>
+
+        <!-- Contenido principal -->
+        <main class="main-content" id="mainContent">
+            <div class="empty-state">
+                <h2>Selecciona un episodio o crea uno nuevo</h2>
+                <p>Comienza añadiendo tu primer episodio desde el menú lateral</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para vista de imagen -->
+    <div class="modal" id="imageModal" onclick="closeModal()">
+        <button class="modal-close">×</button>
+        <img id="modalImage" src="" alt="Vista ampliada">
+    </div>
+
+    <script>
+        // Estado de la aplicación
+        let episodes = [];
+        let currentEpisode = null;
+        let isLoading = false;
+
+        // Cargar datos desde storage compartido
+        async function loadData() {
+            try {
+                const result = await window.storage.get('failure-episodes', true);
+                if (result && result.value) {
+                    episodes = JSON.parse(result.value);
+                }
+            } catch (error) {
+                console.log('No hay datos previos, iniciando desde cero');
+                episodes = [];
+            }
+        }
+
+        // Inicializar app
+        async function enterApp() {
+            document.getElementById('home-screen').classList.add('hidden');
+            isLoading = true;
+            await loadData();
+            isLoading = false;
+            setTimeout(() => {
+                document.getElementById('app').classList.add('visible');
+                renderEpisodesList();
+                // Si hay episodios, seleccionar el primero
+                if (episodes.length > 0) {
+                    selectEpisode(episodes[0].id);
+                }
+            }, 300);
+        }
+
+        // Añadir nuevo episodio
+        async function addEpisode() {
+            const episodeNumber = episodes.length + 1;
+            const title = prompt(`Título del Episodio ${episodeNumber}:`) || `Episodio ${episodeNumber}`;
+            
+            const newEpisode = {
+                id: Date.now(),
+                number: episodeNumber,
+                title: title,
+                sections: [] // Array de secciones dinámicas
+            };
+
+            episodes.push(newEpisode);
+            await saveEpisodes();
+            renderEpisodesList();
+            selectEpisode(newEpisode.id);
+        }
+
+        // Editar nombre del episodio
+        async function editEpisodeTitle(id) {
+            const episode = episodes.find(ep => ep.id === id);
+            if (!episode) return;
+
+            const newTitle = prompt('Nuevo título del episodio:', episode.title);
+            if (newTitle && newTitle.trim()) {
+                episode.title = newTitle.trim();
+                await saveEpisodes();
+                renderEpisodesList();
+                if (currentEpisode?.id === id) {
+                    renderEpisodeContent();
+                }
+            }
+        }
+
+        // Agregar nueva sección
+        async function addSection(type) {
+            if (!currentEpisode) return;
+
+            const sectionId = Date.now();
+            const section = {
+                id: sectionId,
+                type: type,
+                data: type === 'notes' ? '' : []
+            };
+
+            if (!currentEpisode.sections) {
+                currentEpisode.sections = [];
+            }
+
+            currentEpisode.sections.push(section);
+            await saveEpisodes();
+            renderEpisodeContent();
+        }
+
+        // Eliminar sección
+        async function deleteSection(sectionId) {
+            if (!currentEpisode || !confirm('¿Eliminar esta sección?')) return;
+
+            currentEpisode.sections = currentEpisode.sections.filter(s => s.id !== sectionId);
+            await saveEpisodes();
+            renderEpisodeContent();
+        }
+
+        // Renderizar lista de episodios
+        function renderEpisodesList() {
+            const list = document.getElementById('episodesList');
+            list.innerHTML = episodes.map(ep => `
+                <div class="episode-item ${currentEpisode?.id === ep.id ? 'active' : ''}" 
+                     onclick="selectEpisode(${ep.id})">
+                    <div class="episode-number">EP. ${ep.number}</div>
+                    <div class="episode-title">${ep.title}</div>
+                    <button class="edit-episode-btn" onclick="event.stopPropagation(); editEpisodeTitle(${ep.id})" title="Editar título">✏️</button>
+                    <button class="delete-episode-btn" onclick="event.stopPropagation(); deleteEpisode(${ep.id})" title="Eliminar episodio">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Seleccionar episodio
+        function selectEpisode(id) {
+            currentEpisode = episodes.find(ep => ep.id === id);
+            renderEpisodesList();
+            renderEpisodeContent();
+        }
+
+        // Renderizar contenido del episodio
+        function renderEpisodeContent() {
+            const content = document.getElementById('mainContent');
+            
+            if (!currentEpisode) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <h2>Selecciona un episodio o crea uno nuevo</h2>
+                        <p>Comienza añadiendo tu primer episodio desde el menú lateral</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Asegurar que existe el array de secciones
+            if (!currentEpisode.sections) {
+                currentEpisode.sections = [];
+            }
+
+            // Generar HTML para cada sección
+            let sectionsHTML = '';
+            currentEpisode.sections.forEach(section => {
+                sectionsHTML += generateSectionHTML(section);
+            });
+
+            content.innerHTML = `
+                <div class="episode-header">
+                    <h1>Episodio ${currentEpisode.number}: ${currentEpisode.title}</h1>
+                    <p>Arrastra las secciones para reordenarlas</p>
+                </div>
+
+                <div class="add-section-container">
+                    <button class="add-section-btn" onclick="addSection('notes')">+ AÑADIR NOTAS</button>
+                    <button class="add-section-btn" onclick="addSection('images')">+ AÑADIR IMÁGENES</button>
+                    <button class="add-section-btn" onclick="addSection('audio')">+ AÑADIR AUDIO</button>
+                </div>
+
+                <div id="sectionsContainer">
+                    ${sectionsHTML || '<div class="empty-state"><p>Agrega tu primera sección usando los botones de arriba</p></div>'}
+                </div>
+            `;
+
+            // Configurar eventos para cada sección
+            setupSectionEvents();
+            setupDragAndDrop();
+        }
+
+        // Generar HTML para una sección según su tipo
+        function generateSectionHTML(section) {
+            const sectionTypeNames = {
+                notes: 'Notas y Apuntes',
+                images: 'Imágenes',
+                audio: 'Audio'
+            };
+
+            let contentHTML = '';
+            
+            if (section.type === 'notes') {
+                contentHTML = `
+                    <textarea class="section-textarea" data-section-id="${section.id}" placeholder="Escribe tus notas aquí...">${section.data || ''}</textarea>
+                `;
+            } else if (section.type === 'images') {
+                contentHTML = `
+                    <div class="file-input-container">
+                        <label class="file-input-label" for="imageInput-${section.id}">
+                            📷 SUBIR IMÁGENES
+                        </label>
+                        <input type="file" id="imageInput-${section.id}" class="image-input" data-section-id="${section.id}" accept="image/*" multiple>
+                    </div>
+                    <div class="images-grid" id="imagesGrid-${section.id}">
+                        ${generateImagesHTML(section)}
+                    </div>
+                `;
+            } else if (section.type === 'audio') {
+                contentHTML = `
+                    <div class="file-input-container">
+                        <label class="file-input-label" for="audioInput-${section.id}">
+                            🎵 SUBIR AUDIO
+                        </label>
+                        <input type="file" id="audioInput-${section.id}" class="audio-input" data-section-id="${section.id}" accept="audio/*" multiple>
+                    </div>
+                    <div class="audio-list" id="audioList-${section.id}">
+                        ${generateAudioHTML(section)}
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="content-section" draggable="true" data-section-id="${section.id}">
+                    <div class="section-title">
+                        ${sectionTypeNames[section.type]}
+                        <span class="drag-handle" title="Arrastra para reordenar">⋮⋮</span>
+                        <button class="delete-section-btn" onclick="deleteSection(${section.id})" title="Eliminar sección">×</button>
+                    </div>
+                    ${contentHTML}
+                </div>
+            `;
+        }
+
+        // Generar HTML para imágenes de una sección
+        function generateImagesHTML(section) {
+            if (!section.data || !section.data.length) {
+                return '<p style="color: var(--text-secondary);">No hay imágenes todavía</p>';
+            }
+
+            return section.data.map((img, index) => `
+                <div class="image-item" onclick="openModal('${img}')">
+                    <img src="${img}" alt="Imagen ${index + 1}">
+                    <button class="delete-image-btn" onclick="event.stopPropagation(); deleteItemFromSection(${section.id}, ${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Generar HTML para audio de una sección
+        function generateAudioHTML(section) {
+            if (!section.data || !section.data.length) {
+                return '<p style="color: var(--text-secondary);">No hay audio todavía</p>';
+            }
+
+            return section.data.map((audio, index) => `
+                <div class="audio-item">
+                    <audio controls src="${audio.data}"></audio>
+                    <button class="delete-audio-btn" onclick="deleteItemFromSection(${section.id}, ${index})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Configurar eventos para las secciones
+        function setupSectionEvents() {
+            // Eventos de textarea para notas
+            document.querySelectorAll('.section-textarea').forEach(textarea => {
+                textarea.addEventListener('input', async (e) => {
+                    const sectionId = parseInt(e.target.getAttribute('data-section-id'));
+                    const section = currentEpisode.sections.find(s => s.id === sectionId);
+                    if (section) {
+                        section.data = e.target.value;
+                        await saveEpisodes();
+                    }
+                });
+            });
+
+            // Eventos de input para imágenes
+            document.querySelectorAll('.image-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const sectionId = parseInt(e.target.getAttribute('data-section-id'));
+                    handleFileUpload(e, sectionId, 'image');
+                });
+            });
+
+            // Eventos de input para audio
+            document.querySelectorAll('.audio-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const sectionId = parseInt(e.target.getAttribute('data-section-id'));
+                    handleFileUpload(e, sectionId, 'audio');
+                });
+            });
+        }
+
+        // Manejar carga de archivos (imágenes y audio)
+        function handleFileUpload(event, sectionId, fileType) {
+            const section = currentEpisode.sections.find(s => s.id === sectionId);
+            if (!section) return;
+
+            const files = Array.from(event.target.files);
+            
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    if (fileType === 'image') {
+                        section.data.push(e.target.result);
+                    } else if (fileType === 'audio') {
+                        section.data.push({
+                            name: file.name,
+                            data: e.target.result
+                        });
+                    }
+                    await saveEpisodes();
+                    renderEpisodeContent();
+                };
+                reader.readAsDataURL(file);
+            });
+
+            event.target.value = '';
+        }
+
+        // Eliminar item de una sección (imagen o audio)
+        async function deleteItemFromSection(sectionId, index) {
+            if (!confirm('¿Eliminar este elemento?')) return;
+
+            const section = currentEpisode.sections.find(s => s.id === sectionId);
+            if (section && section.data) {
+                section.data.splice(index, 1);
+                await saveEpisodes();
+                renderEpisodeContent();
+            }
+        }
+
+        // Configurar drag and drop para reordenar secciones
+        function setupDragAndDrop() {
+            const container = document.getElementById('sectionsContainer');
+            if (!container) return;
+
+            const sections = container.querySelectorAll('.content-section');
+            let draggedElement = null;
+
+            sections.forEach(section => {
+                section.addEventListener('dragstart', (e) => {
+                    draggedElement = section;
+                    section.classList.add('dragging');
+                });
+
+                section.addEventListener('dragend', (e) => {
+                    section.classList.remove('dragging');
+                    draggedElement = null;
+                });
+
+                section.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    const afterElement = getDragAfterElement(container, e.clientY);
+                    if (afterElement == null) {
+                        container.appendChild(draggedElement);
+                    } else {
+                        container.insertBefore(draggedElement, afterElement);
+                    }
+                });
+
+                section.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    // Actualizar el orden en el modelo
+                    const newOrder = Array.from(container.querySelectorAll('.content-section'))
+                        .map(el => parseInt(el.getAttribute('data-section-id')));
+                    
+                    // Reordenar el array de secciones
+                    const orderedSections = [];
+                    newOrder.forEach(id => {
+                        const section = currentEpisode.sections.find(s => s.id === id);
+                        if (section) orderedSections.push(section);
+                    });
+                    currentEpisode.sections = orderedSections;
+                    await saveEpisodes();
+                });
+            });
+        }
+
+        function getDragAfterElement(container, y) {
+            const draggableElements = [...container.querySelectorAll('.content-section:not(.dragging)')];
+
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = y - box.top - box.height / 2;
+
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        // Modal de imagen
+        function openModal(src) {
+            document.getElementById('modalImage').src = src;
+            document.getElementById('imageModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('imageModal').classList.remove('active');
+        }
+
+        // Eliminar episodio
+        async function deleteEpisode(id) {
+            if (confirm('¿Eliminar este episodio?')) {
+                episodes = episodes.filter(ep => ep.id !== id);
+                
+                // Renumerar episodios
+                episodes.forEach((ep, index) => {
+                    ep.number = index + 1;
+                });
+
+                if (currentEpisode?.id === id) {
+                    currentEpisode = null;
+                }
+
+                await saveEpisodes();
+                renderEpisodesList();
+                renderEpisodeContent();
+            }
+        }
+
+        // Guardar en storage compartido
+        async function saveEpisodes() {
+            try {
+                await window.storage.set('failure-episodes', JSON.stringify(episodes), true);
+            } catch (error) {
+                console.error('Error al guardar:', error);
+                alert('Hubo un error al guardar los cambios. Por favor, intenta de nuevo.');
+            }
+        }
+    </script>
+</body>
+</html>
