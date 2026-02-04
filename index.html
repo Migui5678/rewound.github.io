@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -119,18 +118,28 @@
             margin-bottom: 0.5rem;
         }
 
-        .add-episode-btn {
-            width: 100%;
+        .sidebar-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .add-episode-btn, .add-folder-btn {
+            flex: 1;
             padding: 0.75rem;
             background: transparent;
             border: 2px solid var(--accent-primary);
             color: var(--accent-primary);
             font-family: 'Space Mono', monospace;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             cursor: pointer;
             transition: all 0.3s ease;
             letter-spacing: 0.1em;
             margin-top: 1rem;
+        }
+
+        .add-folder-btn {
+            border-color: var(--accent-secondary);
+            color: var(--accent-secondary);
         }
 
         .add-episode-btn:hover {
@@ -138,6 +147,105 @@
             color: var(--bg-dark);
             transform: translateY(-2px);
             box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+        }
+
+        .add-folder-btn:hover {
+            background: var(--accent-secondary);
+            color: var(--bg-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 0, 85, 0.3);
+        }
+
+        /* Folders */
+        .folder-item {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .folder-header {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .folder-header:hover {
+            background: rgba(255, 0, 85, 0.05);
+        }
+
+        .folder-icon {
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+        }
+
+        .folder-item.open .folder-icon {
+            transform: rotate(90deg);
+        }
+
+        .folder-name {
+            flex: 1;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--accent-secondary);
+            letter-spacing: 0.05em;
+        }
+
+        .folder-count {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-dark);
+            padding: 0.25rem 0.5rem;
+            border-radius: 10px;
+        }
+
+        .edit-folder-btn, .delete-folder-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            padding: 0.25rem;
+        }
+
+        .folder-header:hover .edit-folder-btn,
+        .folder-header:hover .delete-folder-btn {
+            opacity: 1;
+        }
+
+        .edit-folder-btn:hover {
+            color: var(--accent-primary);
+        }
+
+        .delete-folder-btn:hover {
+            color: var(--accent-secondary);
+        }
+
+        .folder-episodes {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .folder-item.open .folder-episodes {
+            max-height: 2000px;
+        }
+
+        .folder-episodes .episode-item {
+            padding-left: 3rem;
+            border-left: 3px solid transparent;
+        }
+
+        .uncategorized-label {
+            padding: 1rem 1.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .episodes-list {
@@ -190,6 +298,24 @@
         }
 
         .episode-item:hover .edit-episode-btn {
+            opacity: 1;
+        }
+
+        .move-episode-btn {
+            position: absolute;
+            right: 5.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .episode-item:hover .move-episode-btn {
             opacity: 1;
         }
 
@@ -576,7 +702,10 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-title">FAILURE</div>
-                <button class="add-episode-btn" onclick="addEpisode()">+ AÑADIR EPISODIO</button>
+                <div class="sidebar-buttons">
+                    <button class="add-episode-btn" onclick="addEpisode()">+ EPISODIO</button>
+                    <button class="add-folder-btn" onclick="addFolder()">+ CARPETA</button>
+                </div>
             </div>
             <div class="episodes-list" id="episodesList"></div>
         </aside>
@@ -599,19 +728,25 @@
     <script>
         // Estado de la aplicación
         let episodes = [];
+        let folders = [];
         let currentEpisode = null;
         let isLoading = false;
 
-        // Cargar datos desde storage compartido
+        // Cargar datos desde localStorage
         async function loadData() {
             try {
-                const result = await window.storage.get('failure-episodes', true);
-                if (result && result.value) {
-                    episodes = JSON.parse(result.value);
+                const data = localStorage.getItem('failure-episodes');
+                if (data) {
+                    episodes = JSON.parse(data);
+                }
+                const foldersData = localStorage.getItem('failure-folders');
+                if (foldersData) {
+                    folders = JSON.parse(foldersData);
                 }
             } catch (error) {
                 console.log('No hay datos previos, iniciando desde cero');
                 episodes = [];
+                folders = [];
             }
         }
 
@@ -632,7 +767,7 @@
         }
 
         // Añadir nuevo episodio
-        async function addEpisode() {
+        async function addEpisode(folderId = null) {
             const episodeNumber = episodes.length + 1;
             const title = prompt(`Título del Episodio ${episodeNumber}:`) || `Episodio ${episodeNumber}`;
             
@@ -640,13 +775,97 @@
                 id: Date.now(),
                 number: episodeNumber,
                 title: title,
-                sections: [] // Array de secciones dinámicas
+                sections: [],
+                folderId: folderId // null = sin carpeta
             };
 
             episodes.push(newEpisode);
             await saveEpisodes();
             renderEpisodesList();
             selectEpisode(newEpisode.id);
+        }
+
+        // Añadir nueva carpeta
+        async function addFolder() {
+            const name = prompt('Nombre de la carpeta:');
+            if (!name || !name.trim()) return;
+
+            const newFolder = {
+                id: Date.now(),
+                name: name.trim(),
+                open: true
+            };
+
+            folders.push(newFolder);
+            await saveFolders();
+            renderEpisodesList();
+        }
+
+        // Editar nombre de carpeta
+        async function editFolderName(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (!folder) return;
+
+            const newName = prompt('Nuevo nombre de la carpeta:', folder.name);
+            if (newName && newName.trim()) {
+                folder.name = newName.trim();
+                await saveFolders();
+                renderEpisodesList();
+            }
+        }
+
+        // Eliminar carpeta
+        async function deleteFolder(folderId) {
+            if (!confirm('¿Eliminar esta carpeta? Los episodios dentro se moverán a "Sin categoría"')) return;
+
+            // Mover episodios de la carpeta a sin categoría
+            episodes.forEach(ep => {
+                if (ep.folderId === folderId) {
+                    ep.folderId = null;
+                }
+            });
+
+            folders = folders.filter(f => f.id !== folderId);
+            await saveFolders();
+            await saveEpisodes();
+            renderEpisodesList();
+        }
+
+        // Toggle carpeta abierta/cerrada
+        function toggleFolder(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                folder.open = !folder.open;
+                saveFolders();
+                renderEpisodesList();
+            }
+        }
+
+        // Mover episodio a carpeta
+        async function moveEpisodeToFolder(episodeId) {
+            const episode = episodes.find(ep => ep.id === episodeId);
+            if (!episode) return;
+
+            let options = '0. Sin categoría\n';
+            folders.forEach((folder, index) => {
+                options += `${index + 1}. ${folder.name}\n`;
+            });
+
+            const choice = prompt(`Mover "${episode.title}" a:\n\n${options}\nIngresa el número:`);
+            if (choice === null) return;
+
+            const choiceNum = parseInt(choice);
+            if (choiceNum === 0) {
+                episode.folderId = null;
+            } else if (choiceNum > 0 && choiceNum <= folders.length) {
+                episode.folderId = folders[choiceNum - 1].id;
+            } else {
+                alert('Opción inválida');
+                return;
+            }
+
+            await saveEpisodes();
+            renderEpisodesList();
         }
 
         // Editar nombre del episodio
@@ -694,18 +913,59 @@
             renderEpisodeContent();
         }
 
-        // Renderizar lista de episodios
+        // Renderizar lista de episodios con carpetas
         function renderEpisodesList() {
             const list = document.getElementById('episodesList');
-            list.innerHTML = episodes.map(ep => `
-                <div class="episode-item ${currentEpisode?.id === ep.id ? 'active' : ''}" 
-                     onclick="selectEpisode(${ep.id})">
-                    <div class="episode-number">EP. ${ep.number}</div>
-                    <div class="episode-title">${ep.title}</div>
-                    <button class="edit-episode-btn" onclick="event.stopPropagation(); editEpisodeTitle(${ep.id})" title="Editar título">✏️</button>
-                    <button class="delete-episode-btn" onclick="event.stopPropagation(); deleteEpisode(${ep.id})" title="Eliminar episodio">×</button>
-                </div>
-            `).join('');
+            let html = '';
+
+            // Renderizar carpetas con sus episodios
+            folders.forEach(folder => {
+                const folderEpisodes = episodes.filter(ep => ep.folderId === folder.id);
+                
+                html += `
+                    <div class="folder-item ${folder.open ? 'open' : ''}">
+                        <div class="folder-header" onclick="toggleFolder(${folder.id})">
+                            <span class="folder-icon">▶</span>
+                            <span class="folder-name">${folder.name}</span>
+                            <span class="folder-count">${folderEpisodes.length}</span>
+                            <button class="edit-folder-btn" onclick="event.stopPropagation(); editFolderName(${folder.id})" title="Editar nombre">✏️</button>
+                            <button class="delete-folder-btn" onclick="event.stopPropagation(); deleteFolder(${folder.id})" title="Eliminar carpeta">×</button>
+                        </div>
+                        <div class="folder-episodes">
+                            ${folderEpisodes.map(ep => `
+                                <div class="episode-item ${currentEpisode?.id === ep.id ? 'active' : ''}" 
+                                     onclick="selectEpisode(${ep.id})">
+                                    <div class="episode-number">EP. ${ep.number}</div>
+                                    <div class="episode-title">${ep.title}</div>
+                                    <button class="move-episode-btn" onclick="event.stopPropagation(); moveEpisodeToFolder(${ep.id})" title="Mover a carpeta">📁</button>
+                                    <button class="edit-episode-btn" onclick="event.stopPropagation(); editEpisodeTitle(${ep.id})" title="Editar título">✏️</button>
+                                    <button class="delete-episode-btn" onclick="event.stopPropagation(); deleteEpisode(${ep.id})" title="Eliminar episodio">×</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Episodios sin carpeta
+            const uncategorizedEpisodes = episodes.filter(ep => !ep.folderId);
+            if (uncategorizedEpisodes.length > 0) {
+                html += '<div class="uncategorized-label">Sin categoría</div>';
+                uncategorizedEpisodes.forEach(ep => {
+                    html += `
+                        <div class="episode-item ${currentEpisode?.id === ep.id ? 'active' : ''}" 
+                             onclick="selectEpisode(${ep.id})">
+                            <div class="episode-number">EP. ${ep.number}</div>
+                            <div class="episode-title">${ep.title}</div>
+                            <button class="move-episode-btn" onclick="event.stopPropagation(); moveEpisodeToFolder(${ep.id})" title="Mover a carpeta">📁</button>
+                            <button class="edit-episode-btn" onclick="event.stopPropagation(); editEpisodeTitle(${ep.id})" title="Editar título">✏️</button>
+                            <button class="delete-episode-btn" onclick="event.stopPropagation(); deleteEpisode(${ep.id})" title="Eliminar episodio">×</button>
+                        </div>
+                    `;
+                });
+            }
+
+            list.innerHTML = html || '<div class="empty-state" style="padding: 2rem 1rem;"><p style="color: var(--text-secondary); font-size: 0.85rem;">Agrega tu primer episodio o carpeta</p></div>';
         }
 
         // Seleccionar episodio
@@ -1004,13 +1264,22 @@
             }
         }
 
-        // Guardar en storage compartido
+        // Guardar en localStorage
         async function saveEpisodes() {
             try {
-                await window.storage.set('failure-episodes', JSON.stringify(episodes), true);
+                localStorage.setItem('failure-episodes', JSON.stringify(episodes));
             } catch (error) {
                 console.error('Error al guardar:', error);
                 alert('Hubo un error al guardar los cambios. Por favor, intenta de nuevo.');
+            }
+        }
+
+        // Guardar carpetas en localStorage
+        async function saveFolders() {
+            try {
+                localStorage.setItem('failure-folders', JSON.stringify(folders));
+            } catch (error) {
+                console.error('Error al guardar carpetas:', error);
             }
         }
     </script>
