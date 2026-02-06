@@ -259,10 +259,19 @@
 
         .episode-item {
             padding: 1rem 1.5rem;
-            cursor: pointer;
+            cursor: move;
             border-left: 3px solid transparent;
             transition: all 0.3s ease;
             position: relative;
+        }
+
+        .episode-item.dragging {
+            opacity: 0.5;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .episode-item.drag-over {
+            border-top: 3px solid var(--accent-primary);
         }
 
         .episode-item:hover {
@@ -844,12 +853,19 @@
             const episodeNumber = episodes.length + 1;
             const title = prompt(`Título del Episodio ${episodeNumber}:`) || `Episodio ${episodeNumber}`;
             
+            // Calcular el orden dentro de la carpeta
+            const episodesInFolder = episodes.filter(ep => ep.folderId === folderId);
+            const maxOrder = episodesInFolder.length > 0 
+                ? Math.max(...episodesInFolder.map(ep => ep.order || 0))
+                : -1;
+            
             const newEpisode = {
                 id: Date.now(),
                 number: episodeNumber,
                 title: title,
                 sections: [],
-                folderId: folderId // null = sin carpeta
+                folderId: folderId, // null = sin carpeta
+                order: maxOrder + 1 // Orden dentro de la carpeta
             };
 
             episodes.push(newEpisode);
@@ -991,9 +1007,18 @@
             const list = document.getElementById('episodesList');
             let html = '';
 
+            // Asegurar que todos los episodios tengan orden
+            episodes.forEach((ep, index) => {
+                if (ep.order === undefined) {
+                    ep.order = index;
+                }
+            });
+
             // Renderizar carpetas con sus episodios
             folders.forEach(folder => {
-                const folderEpisodes = episodes.filter(ep => ep.folderId === folder.id);
+                const folderEpisodes = episodes
+                    .filter(ep => ep.folderId === folder.id)
+                    .sort((a, b) => (a.order || 0) - (b.order || 0));
                 
                 html += `
                     <div class="folder-item ${folder.open ? 'open' : ''}">
@@ -1004,9 +1029,11 @@
                             <button class="edit-folder-btn" onclick="event.stopPropagation(); editFolderName(${folder.id})" title="Editar nombre">✏️</button>
                             <button class="delete-folder-btn" onclick="event.stopPropagation(); deleteFolder(${folder.id})" title="Eliminar carpeta">×</button>
                         </div>
-                        <div class="folder-episodes">
+                        <div class="folder-episodes" data-folder-id="${folder.id}">
                             ${folderEpisodes.map(ep => `
                                 <div class="episode-item ${currentEpisode?.id === ep.id ? 'active' : ''}" 
+                                     draggable="true"
+                                     data-episode-id="${ep.id}"
                                      onclick="selectEpisode(${ep.id})">
                                     <div class="episode-number">EP. ${ep.number}</div>
                                     <div class="episode-title">${ep.title}</div>
@@ -1021,12 +1048,18 @@
             });
 
             // Episodios sin carpeta
-            const uncategorizedEpisodes = episodes.filter(ep => !ep.folderId);
+            const uncategorizedEpisodes = episodes
+                .filter(ep => !ep.folderId)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+                
             if (uncategorizedEpisodes.length > 0) {
                 html += '<div class="uncategorized-label">Sin categoría</div>';
+                html += '<div class="uncategorized-container" data-folder-id="null">';
                 uncategorizedEpisodes.forEach(ep => {
                     html += `
                         <div class="episode-item ${currentEpisode?.id === ep.id ? 'active' : ''}" 
+                             draggable="true"
+                             data-episode-id="${ep.id}"
                              onclick="selectEpisode(${ep.id})">
                             <div class="episode-number">EP. ${ep.number}</div>
                             <div class="episode-title">${ep.title}</div>
@@ -1036,9 +1069,95 @@
                         </div>
                     `;
                 });
+                html += '</div>';
             }
 
             list.innerHTML = html || '<div class="empty-state" style="padding: 2rem 1rem;"><p style="color: var(--text-secondary); font-size: 0.85rem;">Agrega tu primer episodio o carpeta</p></div>';
+            
+            // Configurar drag and drop para episodios
+            setupEpisodeDragAndDrop();
+        }
+
+        // Configurar drag and drop para reordenar episodios
+        function setupEpisodeDragAndDrop() {
+            const episodeItems = document.querySelectorAll('.episode-item');
+            let draggedEpisode = null;
+
+            episodeItems.forEach(item => {
+                item.addEventListener('dragstart', (e) => {
+                    draggedEpisode = item;
+                    item.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                item.addEventListener('dragend', (e) => {
+                    item.classList.remove('dragging');
+                    draggedEpisode = null;
+                });
+
+                item.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    
+                    if (draggedEpisode && draggedEpisode !== item) {
+                        // Remover clase de todos
+                        document.querySelectorAll('.episode-item').forEach(el => {
+                            el.classList.remove('drag-over');
+                        });
+                        item.classList.add('drag-over');
+                    }
+                });
+
+                item.addEventListener('dragleave', (e) => {
+                    item.classList.remove('drag-over');
+                });
+
+                item.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    item.classList.remove('drag-over');
+                    
+                    if (!draggedEpisode || draggedEpisode === item) return;
+
+                    const draggedId = parseInt(draggedEpisode.getAttribute('data-episode-id'));
+                    const targetId = parseInt(item.getAttribute('data-episode-id'));
+                    
+                    const draggedEp = episodes.find(ep => ep.id === draggedId);
+                    const targetEp = episodes.find(ep => ep.id === targetId);
+
+                    if (!draggedEp || !targetEp) return;
+
+                    // Solo reordenar si están en la misma carpeta
+                    if (draggedEp.folderId === targetEp.folderId) {
+                        await reorderEpisodes(draggedId, targetId, draggedEp.folderId);
+                    }
+                });
+            });
+        }
+
+        // Reordenar episodios
+        async function reorderEpisodes(draggedId, targetId, folderId) {
+            const folderEpisodes = episodes
+                .filter(ep => ep.folderId === folderId)
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            const draggedIndex = folderEpisodes.findIndex(ep => ep.id === draggedId);
+            const targetIndex = folderEpisodes.findIndex(ep => ep.id === targetId);
+
+            if (draggedIndex === -1 || targetIndex === -1) return;
+
+            // Remover el episodio arrastrado
+            const [draggedEpisode] = folderEpisodes.splice(draggedIndex, 1);
+            
+            // Insertar en la nueva posición
+            folderEpisodes.splice(targetIndex, 0, draggedEpisode);
+
+            // Actualizar el orden de todos los episodios en la carpeta
+            folderEpisodes.forEach((ep, index) => {
+                ep.order = index;
+            });
+
+            await saveEpisodes();
+            renderEpisodesList();
         }
 
         // Seleccionar episodio
