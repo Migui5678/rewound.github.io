@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Failure - Archivo de Serie</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    
     <style>
         :root {
             --bg-dark: #0a0a0a;
@@ -691,7 +696,7 @@
     <!-- Pantalla de inicio -->
     <div id="home-screen">
         <div>
-            <h1 class="title-main" onclick="enterApp()">FAILURE</h1>
+            <h1 class="title-main" onclick="enterApp()">REWOUND</h1>
             <p class="subtitle">CLICK TO ENTER</p>
         </div>
     </div>
@@ -732,25 +737,48 @@
     </div>
 
     <script>
+        // Configuración de Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyCoz3zzs6gxb9DUdpAX07fs_QoPysWVSa4",
+            authDomain: "rewound-bcf31.firebaseapp.com",
+            databaseURL: "https://rewound-bcf31-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "rewound-bcf31",
+            storageBucket: "rewound-bcf31.firebasestorage.app",
+            messagingSenderId: "765226881983",
+            appId: "1:765226881983:web:715c3629c6042a0ab9870a"
+        };
+
+        // Inicializar Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
         // Estado de la aplicación
         let episodes = [];
         let folders = [];
         let currentEpisode = null;
         let isLoading = false;
 
-        // Cargar datos desde localStorage
+        // Cargar datos desde Firebase
         async function loadData() {
             try {
-                const data = localStorage.getItem('failure-episodes');
-                if (data) {
-                    episodes = JSON.parse(data);
+                showSaveIndicator('saving');
+                
+                // Cargar episodios
+                const episodesSnapshot = await database.ref('episodes').once('value');
+                if (episodesSnapshot.exists()) {
+                    episodes = episodesSnapshot.val() || [];
                 }
-                const foldersData = localStorage.getItem('failure-folders');
-                if (foldersData) {
-                    folders = JSON.parse(foldersData);
+                
+                // Cargar carpetas
+                const foldersSnapshot = await database.ref('folders').once('value');
+                if (foldersSnapshot.exists()) {
+                    folders = foldersSnapshot.val() || [];
                 }
+                
+                showSaveIndicator('saved');
             } catch (error) {
-                console.log('No hay datos previos, iniciando desde cero');
+                console.error('Error al cargar datos:', error);
+                showSaveIndicator('error');
                 episodes = [];
                 folders = [];
             }
@@ -781,11 +809,33 @@
             }
         });
 
-        // Guardar antes de cerrar la página
-        window.addEventListener('beforeunload', () => {
-            if (episodes.length > 0 || folders.length > 0) {
-                localStorage.setItem('failure-episodes', JSON.stringify(episodes));
-                localStorage.setItem('failure-folders', JSON.stringify(folders));
+        // Sincronización en tiempo real con Firebase
+        database.ref('episodes').on('value', (snapshot) => {
+            if (!isLoading && snapshot.exists()) {
+                const newEpisodes = snapshot.val() || [];
+                // Solo actualizar si hay cambios
+                if (JSON.stringify(newEpisodes) !== JSON.stringify(episodes)) {
+                    episodes = newEpisodes;
+                    renderEpisodesList();
+                    // Refrescar contenido si estamos viendo un episodio
+                    if (currentEpisode) {
+                        const updated = episodes.find(ep => ep.id === currentEpisode.id);
+                        if (updated) {
+                            currentEpisode = updated;
+                            renderEpisodeContent();
+                        }
+                    }
+                }
+            }
+        });
+
+        database.ref('folders').on('value', (snapshot) => {
+            if (!isLoading && snapshot.exists()) {
+                const newFolders = snapshot.val() || [];
+                if (JSON.stringify(newFolders) !== JSON.stringify(folders)) {
+                    folders = newFolders;
+                    renderEpisodesList();
+                }
             }
         });
 
@@ -1327,11 +1377,11 @@
             }
         }
 
-        // Guardar en localStorage
+        // Guardar episodios en Firebase
         async function saveEpisodes() {
             showSaveIndicator('saving');
             try {
-                localStorage.setItem('failure-episodes', JSON.stringify(episodes));
+                await database.ref('episodes').set(episodes);
                 showSaveIndicator('saved');
             } catch (error) {
                 console.error('Error al guardar:', error);
@@ -1340,11 +1390,11 @@
             }
         }
 
-        // Guardar carpetas en localStorage
+        // Guardar carpetas en Firebase
         async function saveFolders() {
             showSaveIndicator('saving');
             try {
-                localStorage.setItem('failure-folders', JSON.stringify(folders));
+                await database.ref('folders').set(folders);
                 showSaveIndicator('saved');
             } catch (error) {
                 console.error('Error al guardar carpetas:', error);
